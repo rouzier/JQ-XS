@@ -1,5 +1,13 @@
 Revision history for Perl extension JQ::XS.
 
+0.02
+	- Boolean results are returned as JSON::PP::Boolean objects
+	- Accept JSON::PP::Boolean, Types::Serialiser::Boolean and boolean
+	  objects as JSON booleans on input
+	- Accept unblessed scalar references (\1, \0) as JSON booleans
+	- Accept Perl's native booleans (PL_sv_yes/PL_sv_no, and SvIsBOOL
+	  copies on perl >= 5.36) as JSON booleans
+
 0.01  Sat Jul 18 17:21:45 2026
 	- Clean object-oriented Perl wrapper for libjq
 	- Removed h2xs-generated stdio boilerplate

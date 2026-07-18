@@ -7,7 +7,11 @@ use warnings;
 require XSLoader;
 use Exporter 'import';
 
-our $VERSION = '0.01';
+# Loads the overloads (boolification, stringification, ...) for the
+# JSON::PP::Boolean objects returned by process().
+use JSON::PP::Boolean ();
+
+our $VERSION = '0.02';
 
 XSLoader::load('JQ::XS', $VERSION);
 
@@ -77,6 +81,37 @@ In scalar context, returns an arrayref of results.
 
 Croaks if the jq filter produces a runtime error or if the processing fails.
 
+=head2 Boolean handling
+
+JSON booleans returned by a filter become L<JSON::PP::Boolean> objects,
+which behave as true/false in boolean context and stringify to C<1> and
+C<0>. They compare equal to the C<JSON::PP::true> and C<JSON::PP::false>
+constants.
+
+  my ($is_big) = JQ::XS->new('. > 2')->process(5);   # JSON::PP::true
+
+On input, the following are converted to JSON C<true>/C<false>:
+
+=over 4
+
+=item * L<JSON::PP::Boolean>, C<Types::Serialiser::Boolean>, or L<boolean>
+objects (by their truth value)
+
+=item * unblessed references to a plain scalar, e.g. C<\1> and C<\0>
+
+=item * Perl's native boolean values, i.e. the results of comparison and
+logical operators and of C<builtin::true>/C<builtin::false>
+
+  $jq->process($x > $y);   # jq sees true or false, not 1 or ""
+
+On perls before 5.36 this only works for a boolean passed directly to
+C<process()>; a copy (e.g. stored in a hash or array first) loses its
+boolean identity and is treated as an ordinary number/string. On perl
+5.36 and later, copies keep their boolean flag and are recognized
+anywhere in the structure.
+
+=back
+
 =head2 process_json($json_text)
 
 Like process, but takes JSON text as input and returns a list of JSON
@@ -114,15 +149,17 @@ it under the same terms as Perl itself.
 # new(), program(), and DESTROY are implemented in XS; the object is a
 # blessed pointer to a C struct (T_PTROBJ), not a hashref.
 
+# Pass $_[0] through unaliased: copying it (my $data = ...) would strip
+# the identity of Perl's native boolean SVs on perls before 5.36.
 sub process {
-  my ($self, $data) = @_;
-  my $results = _xs_process($self, $data, 0);
+  my $self = shift;
+  my $results = _xs_process($self, $_[0], 0);
   return wantarray ? @$results : $results;
 }
 
 sub process_json {
-  my ($self, $json_text) = @_;
-  my $results = _xs_process($self, $json_text, 1);
+  my $self = shift;
+  my $results = _xs_process($self, $_[0], 1);
   return wantarray ? @$results : $results;
 }
 

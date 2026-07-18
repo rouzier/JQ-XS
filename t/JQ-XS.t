@@ -3,7 +3,8 @@ use strict;
 use warnings;
 use utf8;
 
-use Test::More tests => 27;
+use Test::More tests => 45;
+use JSON::PP ();
 use Data::Dumper;
 
 use JQ::XS qw(JQ_DEBUG_TRACE JQ_DEBUG_TRACE_DETAIL JQ_DEBUG_TRACE_ALL);
@@ -124,3 +125,57 @@ my $complex = {
 };
 @result = $jq->process($complex);
 is_deeply(\@result, [$complex], 'complex nested data roundtrip');
+
+# --- Boolean support ---
+
+# jq results that are booleans come back as JSON::PP::Boolean objects
+$jq = JQ::XS->new('. > 2');
+@result = $jq->process(5);
+isa_ok($result[0], 'JSON::PP::Boolean', 'true result');
+ok($result[0], 'true result is true in boolean context');
+is_deeply(\@result, [JSON::PP::true], 'true result equals JSON::PP::true');
+
+@result = $jq->process(1);
+isa_ok($result[0], 'JSON::PP::Boolean', 'false result');
+ok(!$result[0], 'false result is false in boolean context');
+is_deeply(\@result, [JSON::PP::false], 'false result equals JSON::PP::false');
+
+# JSON::PP::Boolean input is seen as a JSON boolean by jq
+$jq = JQ::XS->new('type');
+@result = $jq->process(JSON::PP::true);
+is_deeply(\@result, ['boolean'], 'JSON::PP::true input has jq type boolean');
+@result = $jq->process(JSON::PP::false);
+is_deeply(\@result, ['boolean'], 'JSON::PP::false input has jq type boolean');
+
+# \1 and \0 scalar references are booleans
+@result = $jq->process(\1);
+is_deeply(\@result, ['boolean'], '\\1 input has jq type boolean');
+@result = $jq->process(\0);
+is_deeply(\@result, ['boolean'], '\\0 input has jq type boolean');
+
+$jq = JQ::XS->new('.');
+is_deeply([$jq->process(\1)], [JSON::PP::true], '\\1 roundtrips as true');
+is_deeply([$jq->process(\0)], [JSON::PP::false], '\\0 roundtrips as false');
+
+# Perl native booleans (PL_sv_yes / PL_sv_no) are booleans
+$jq = JQ::XS->new('type');
+@result = $jq->process(1 == 1);
+is_deeply(\@result, ['boolean'], 'PL_sv_yes (1 == 1) has jq type boolean');
+@result = $jq->process(1 == 0);
+is_deeply(\@result, ['boolean'], 'PL_sv_no (1 == 0) has jq type boolean');
+@result = $jq->process(!!1);
+is_deeply(\@result, ['boolean'], '!!1 has jq type boolean');
+
+$jq = JQ::XS->new('.');
+is_deeply([$jq->process(2 > 1)], [JSON::PP::true], 'native true roundtrips as true');
+is_deeply([$jq->process(2 < 1)], [JSON::PP::false], 'native false roundtrips as false');
+
+# booleans nested inside structures roundtrip
+my $bool_data = { yes => JSON::PP::true, no => \0, list => [\1, JSON::PP::false] };
+@result = $jq->process($bool_data);
+is_deeply(
+  \@result,
+  [{ yes => JSON::PP::true, no => JSON::PP::false, list => [JSON::PP::true, JSON::PP::false] }],
+  'nested booleans roundtrip as JSON::PP::Boolean'
+);
+

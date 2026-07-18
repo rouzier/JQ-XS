@@ -54,11 +54,13 @@ static SV *jv_to_sv(pTHX_ jv v) {
       break;
 
     case JV_KIND_FALSE:
-      result = newSViv(0);
+      result = newSV(0);
+      sv_setref_iv(result, "JSON::PP::Boolean", 0);
       break;
 
     case JV_KIND_TRUE:
-      result = newSViv(1);
+      result = newSV(0);
+      sv_setref_iv(result, "JSON::PP::Boolean", 1);
       break;
 
     case JV_KIND_NUMBER:
@@ -117,6 +119,16 @@ static SV *jv_to_sv(pTHX_ jv v) {
 
 /* Convert SV to jv - handles all Perl types */
 static jv sv_to_jv(pTHX_ SV *sv) {
+  /* Perl's native boolean SVs: the immortals returned by comparison and
+   * logical operators. On perl < 5.36 a copy of one is indistinguishable
+   * from an ordinary dualvar, so only identity can be checked. */
+  if (sv == &PL_sv_yes) return jv_true();
+  if (sv == &PL_sv_no)  return jv_false();
+#ifdef SvIsBOOL
+  /* perl >= 5.36: copies keep their boolean flag (builtin::true/false) */
+  if (SvIsBOOL(sv)) return SvTRUE(sv) ? jv_true() : jv_false();
+#endif
+
   if (!SvOK(sv)) {
     return jv_null();
   }
@@ -124,14 +136,12 @@ static jv sv_to_jv(pTHX_ SV *sv) {
   if (SvROK(sv)) {
     SV *ref = SvRV(sv);
 
-    /* Check for blessed reference (JSON::PP::Boolean, etc.) */
+    /* Blessed booleans: JSON::PP::Boolean and friends */
     if (SvOBJECT(ref)) {
-      const char *class = sv_reftype(ref, 1);
-      if (class && (strstr(class, "JSON::PP::Boolean") || strstr(class, "boolean"))) {
-        if (SvIOK(ref)) {
-          IV val = SvIV(ref);
-          return val ? jv_true() : jv_false();
-        }
+      if (sv_derived_from(sv, "JSON::PP::Boolean")
+          || sv_derived_from(sv, "Types::Serialiser::Boolean")
+          || sv_derived_from(sv, "boolean")) {
+        return SvTRUE(ref) ? jv_true() : jv_false();
       }
     }
 
@@ -171,12 +181,9 @@ static jv sv_to_jv(pTHX_ SV *sv) {
       return obj;
     }
 
-    /* Reference to scalar: \1 or \0 for bool */
-    if (SvTYPE(ref) == SVt_PV || SvTYPE(ref) == SVt_IV || SvTYPE(ref) == SVt_NV) {
-      if (SvIOK(ref)) {
-        IV val = SvIV(ref);
-        return val ? jv_true() : jv_false();
-      }
+    /* Unblessed reference to a plain scalar: \1 is true, \0 is false */
+    if (SvTYPE(ref) < SVt_PVAV) {
+      return SvTRUE(ref) ? jv_true() : jv_false();
     }
   }
 
