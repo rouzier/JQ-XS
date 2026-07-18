@@ -1,0 +1,58 @@
+JQ-XS version 0.01
+==================
+
+JQ::XS is a clean object-oriented Perl wrapper for libjq, the C library
+behind the jq command-line JSON query language.
+
+FEATURES
+
+  - Compile and execute jq filter programs
+  - Process Perl data structures (hashes, arrays, numbers, strings)
+  - Process JSON text directly
+  - UTF-8 string support
+  - Comprehensive error handling with Perl exceptions
+  - Support for complex nested data structures
+  - Multiple output values per input
+
+SYNOPSIS
+
+  use JQ::XS;
+
+  my $jq = JQ::XS->new('.foo[] | select(. > 2)');
+  my @results = $jq->process({ foo => [1, 3, 5] });
+  # Returns: (3, 5)
+
+INSTALLATION
+
+To install this module type the following:
+
+   perl Makefile.PL
+   make
+   make test
+   make install
+
+DEPENDENCIES
+
+This module requires:
+
+  - Perl 5.26.3 or higher
+  - libjq 1.6 or compatible
+  - A C compiler (gcc)
+
+On Red Hat/CentOS systems, install with:
+  yum install jq-devel
+
+METHODS
+
+  new($program)       - Compile a jq filter program
+  process($data)      - Process Perl data through the filter
+  process_json($text) - Process JSON text through the filter
+  program()           - Get the source of the compiled program
+
+COPYRIGHT AND LICENSE
+
+Copyright (C) 2026 by root
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself, either Perl version 5.26.3 or,
+at your option, any later version of Perl 5 you may have available.

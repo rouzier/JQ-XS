@@ -1,0 +1,9 @@
+Revision history for Perl extension JQ::XS.
+
+0.01  Sat Jul 18 17:21:45 2026
+	- Clean object-oriented Perl wrapper for libjq
+	- Removed h2xs-generated stdio boilerplate
+	- Implemented jv <-> Perl data structure conversion
+	- Added process() and process_json() methods
+	- Error handling via Perl exceptions (croak)
+	- Support for UTF-8 strings and complex nested data structures

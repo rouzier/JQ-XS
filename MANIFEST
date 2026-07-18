@@ -1,0 +1,9 @@
+Changes
+Makefile.PL
+MANIFEST
+ppport.h
+README
+typemap
+XS.xs
+t/JQ-XS.t
+lib/JQ/XS.pm
