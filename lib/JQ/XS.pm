@@ -137,12 +137,15 @@ The following constants are available via @EXPORT_OK:
 
 =head1 AUTHOR
 
-Perl wrapper around libjq by the JQ::XS developers.
+James Rouzier E<lt>rouzier@gmail.comE<gt>
 
-=head1 LICENSE
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C) 2026 James Rouzier
 
 This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself.
+it under the terms of the MIT license. See the LICENSE file included
+with this distribution.
 
 =cut
 
