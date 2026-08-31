@@ -2,6 +2,7 @@ Changes
 LICENSE
 Makefile.PL
 MANIFEST
+MANIFEST.SKIP
 ppport.h
 README
 typemap

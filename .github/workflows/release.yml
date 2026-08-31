@@ -1,0 +1,220 @@
+# Build the distro packages the repo already knows how to make (see the "rpm"
+# and "deb" targets in Makefile.PL's MY::postamble) on every supported distro,
+# and publish them when a version tag is pushed.
+#
+#   push tag v*       -> build everything, then attach it all to a GitHub Release
+#   workflow_dispatch -> build everything, keep it as workflow artifacts only
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # The version is spelled out in three places that have to agree.  Check them
+  # before starting five container builds, so a typo costs ten seconds rather
+  # than ten minutes.  ("make rpm" also asserts the spec matches $VERSION, but
+  # nothing checks debian/changelog or the tag.)
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check version consistency
+        id: check
+        run: |
+          set -euo pipefail
+
+          # The same parser MakeMaker's VERSION_FROM uses, so CI and the build
+          # can never disagree about what the version is.
+          version=$(perl -MExtUtils::MM_Unix -e \
+              'print ExtUtils::MM_Unix->parse_version("lib/JQ/XS.pm")')
+          spec=$(sed -n 's/^Version:[[:space:]]*//p' rpm/perl-JQ-XS.spec)
+          deb=$(sed -n '1s/^[^(]*(\([^)]*\)).*/\1/p' debian/changelog)
+          # Compare only the upstream part, so a packaging-only revision bump
+          # (1.00-2) stays legal while a stale upstream version does not.
+          deb_upstream=${deb%-*}
+
+          printf '%-20s %s\n' \
+              'lib/JQ/XS.pm'     "$version" \
+              'rpm spec'         "$spec" \
+              'debian/changelog' "$deb"
+
+          rc=0
+          [ "$spec" = "$version" ] ||
+              { echo "::error::rpm/perl-JQ-XS.spec says $spec, expected $version"; rc=1; }
+          [ "$deb_upstream" = "$version" ] ||
+              { echo "::error::debian/changelog says $deb, expected $version-<revision>"; rc=1; }
+
+          if [ "${GITHUB_REF_TYPE:-}" = tag ]; then
+              tag=${GITHUB_REF_NAME#v}
+              printf '%-20s %s\n' 'git tag' "$GITHUB_REF_NAME"
+              [ "$tag" = "$version" ] ||
+                  { echo "::error::tag $GITHUB_REF_NAME does not match \$VERSION $version"; rc=1; }
+          fi
+
+          [ "$rc" -eq 0 ] || exit 1
+          echo "version=$version" >>"$GITHUB_OUTPUT"
+
+  rpm:
+    needs: check-version
+    runs-on: ubuntu-latest
+    # quay.io is Rocky's own registry: it is the canonical home for these
+    # images, and it avoids Docker Hub's anonymous pull limit, which the
+    # shared GitHub-runner egress IPs run into.
+    container: quay.io/rockylinux/rockylinux:${{ matrix.el }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # jq-devel ships in the CodeReady Builder repo, which the EL8 clones
+          # still call powertools.  It is disabled by default on all three.
+          - { el: 8, crb_repo: powertools }
+          - { el: 9, crb_repo: crb }
+          - { el: 10, crb_repo: crb }
+    steps:
+      # Must precede the checkout: the Rocky images ship no git, and without it
+      # actions/checkout silently falls back to downloading a tarball.
+      - name: Install build tooling
+        run: |
+          set -eu
+          dnf -y install git rpm-build dnf-plugins-core
+
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          set -eu
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          # jq-devel is in neither BaseOS/AppStream nor EPEL, so the spec's
+          # BuildRequires cannot be satisfied without enabling the repo above.
+          dnf -y --enablerepo='${{ matrix.crb_repo }}' \
+              builddep rpm/perl-JQ-XS.spec
+
+      # "make rpm" builds the dist tarball first and points _sourcedir at it.
+      # That matters: the spec's %files lists %doc META.json, and META.json only
+      # exists inside the tarball, never in a bare checkout.
+      - name: Build RPM
+        run: |
+          set -eu
+          perl Makefile.PL
+          make rpm
+
+      - name: Collect packages
+        run: |
+          set -eu
+          mkdir -p dist
+          # Skip debuginfo/debugsource: large, and useless without a matching
+          # debuginfo chain to resolve them against.
+          find rpmbuild/RPMS -type f -name '*.rpm' \
+              ! -name '*-debuginfo-*' ! -name '*-debugsource-*' \
+              -exec cp -v {} dist/ \;
+          ls -l dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rpm-el${{ matrix.el }}
+          path: dist/*.rpm
+          if-no-files-found: error
+
+  deb:
+    needs: check-version
+    runs-on: ubuntu-latest
+    container: debian:${{ matrix.ver }}
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { ver: 12, suite: bookworm }
+          - { ver: 13, suite: trixie }
+    steps:
+      # As above: git first, then check out.
+      - name: Install build tooling
+        run: |
+          set -eu
+          apt-get update -qq
+          # ca-certificates is only a Recommends of git, so --no-install-recommends
+          # leaves git with no CA bundle and the checkout below fails its HTTPS
+          # clone. (The Rocky images get it as a hard dependency of git.)
+          apt-get install -y --no-install-recommends git ca-certificates
+
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          set -eu
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          # Pointed at a directory ("./" rather than a source package name) apt
+          # reads debian/control locally, so no deb-src entries are needed --
+          # the images ship none.  It also resolves the two awkward entries in
+          # there: the perl:native arch qualifier and perl-xs-dev, a virtual
+          # package provided by libperl-dev.
+          apt-get build-dep -y ./
+
+      - name: Build .deb
+        run: |
+          set -eu
+          # RPMs are disambiguated by %{?dist} (.el8/.el9/.el10); without an
+          # equivalent, bookworm and trixie would both emit
+          # libjq-xs-perl_<version>-1_amd64.deb and collide as release assets.
+          # "~debNu1" is Debian's own backport-style qualifier: it sorts below
+          # the plain revision and orders correctly between suites.  The base
+          # version stays authoritative in git -- this only appends to it.
+          sed -i '1s/(\([^)]*\))/(\1~deb${{ matrix.ver }}u1)/' debian/changelog
+          head -n 1 debian/changelog
+          perl Makefile.PL
+          make deb
+
+      - name: Collect packages
+        run: |
+          set -eu
+          mkdir -p dist
+          # dpkg-buildpackage always writes to the parent of the source tree.
+          # Skip the automatic -dbgsym package, as the RPM side skips debuginfo.
+          find .. -maxdepth 1 -type f -name '*.deb' ! -name '*-dbgsym_*' \
+              -exec cp -v {} dist/ \;
+          ls -l dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deb-${{ matrix.suite }}
+          path: dist/*.deb
+          if-no-files-found: error
+
+  release:
+    if: github.ref_type == 'tag'
+    needs: [check-version, rpm, deb]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ needs.check-version.outputs.version }}
+        run: |
+          set -eu
+          ls -l dist
+          # Keep re-runs of a partly failed workflow working: only create the
+          # release if it is missing, and let uploads replace assets from an
+          # earlier attempt.
+          gh release view "$TAG" >/dev/null 2>&1 ||
+              gh release create "$TAG" --verify-tag \
+                  --title "JQ::XS $VERSION" --generate-notes
+          gh release upload "$TAG" dist/* --clobber

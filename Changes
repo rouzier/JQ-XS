@@ -1,5 +1,10 @@
 Revision history for Perl extension JQ::XS.
 
+1.00
+	- Relicensed under the MIT license to match libjq
+	- Set author/copyright to James Rouzier <rouzier@gmail.com>
+	- Ship LICENSE file in the distribution
+
 0.02
 	- Boolean results are returned as JSON::PP::Boolean objects
 	- Accept JSON::PP::Boolean, Types::Serialiser::Boolean and boolean

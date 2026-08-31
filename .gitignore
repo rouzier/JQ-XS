@@ -11,3 +11,17 @@
 *.so
 *.bs
 /JQ-XS-*.tar.gz
+
+# debhelper build artifacts
+/debian/.debhelper/
+/debian/debhelper-build-stamp
+/debian/files
+/debian/libjq-xs-perl/
+/debian/libjq-xs-perl.debhelper.log
+/debian/*.substvars
+
+# rpmbuild artifacts
+/rpmbuild/
+
+# Where the release workflow stages packages before uploading them.
+/dist/

@@ -1,0 +1,5 @@
+libjq-xs-perl (1.00-1) unstable; urgency=medium
+
+  * Initial Debian packaging of JQ::XS 1.00.
+
+ -- James Rouzier <rouzier@gmail.com>  Mon, 31 Aug 2026 00:00:00 +0000
