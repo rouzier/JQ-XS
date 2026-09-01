@@ -1,5 +1,12 @@
 Revision history for Perl extension JQ::XS.
 
+1.01
+	- Packaging only; no changes to the module itself
+	- Version the Debian packages +debNuM rather than ~debNuM, matching
+	  Debian's convention for stable updates.  GitHub rewrites "~" to "."
+	  in release asset filenames, so the download name no longer disagreed
+	  with the version recorded inside the package.
+
 1.00
 	- Relicensed under the MIT license to match libjq
 	- Set author/copyright to James Rouzier <rouzier@gmail.com>

@@ -1,4 +1,4 @@
-JQ-XS version 1.00
+JQ-XS version 1.01
 ==================
 
 JQ::XS is a clean object-oriented Perl wrapper for libjq, the C library
@@ -91,7 +91,7 @@ unless they agree with each other and with the tag:
    debian/changelog        the version in the top entry, as <version>-1
 
 Bump all three, and add a %changelog and a debian/changelog entry, before
-tagging.  The Debian packages get a ~debNu1 suffix added at build time so the
+tagging.  The Debian packages get a +debNu1 suffix added at build time so the
 two suites do not produce the same filename.
 
 METHODS

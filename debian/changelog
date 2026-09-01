@@ -1,3 +1,10 @@
+libjq-xs-perl (1.01-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Build with a +debNuM version suffix rather than ~debNuM.
+
+ -- James Rouzier <rouzier@gmail.com>  Tue, 01 Sep 2026 13:32:18 +0000
+
 libjq-xs-perl (1.00-1) unstable; urgency=medium
 
   * Initial Debian packaging of JQ::XS 1.00.

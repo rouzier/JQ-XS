@@ -166,10 +166,13 @@ jobs:
           # RPMs are disambiguated by %{?dist} (.el8/.el9/.el10); without an
           # equivalent, bookworm and trixie would both emit
           # libjq-xs-perl_<version>-1_amd64.deb and collide as release assets.
-          # "~debNu1" is Debian's own backport-style qualifier: it sorts below
-          # the plain revision and orders correctly between suites.  The base
-          # version stays authoritative in git -- this only appends to it.
-          sed -i '1s/(\([^)]*\))/(\1~deb${{ matrix.ver }}u1)/' debian/changelog
+          # "+debNu1" is Debian's own qualifier for stable updates and orders
+          # correctly between suites.  A tilde would additionally sort below the
+          # bare revision, but GitHub rewrites "~" to "." in release asset
+          # filenames, leaving the download name disagreeing with the version
+          # inside the package.  The base version stays authoritative in git --
+          # this only appends to it.
+          sed -i '1s/(\([^)]*\))/(\1+deb${{ matrix.ver }}u1)/' debian/changelog
           head -n 1 debian/changelog
           perl Makefile.PL
           make deb
