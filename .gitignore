@@ -12,6 +12,9 @@
 *.bs
 /JQ-XS-*.tar.gz
 
+# Where the vendored jq is unpacked and built ("make jq_clean" removes it).
+/.jq-build/
+
 # debhelper build artifacts
 /debian/.debhelper/
 /debian/debhelper-build-stamp

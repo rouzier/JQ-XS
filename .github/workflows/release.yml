@@ -74,11 +74,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # jq-devel ships in the CodeReady Builder repo, which the EL8 clones
-          # still call powertools.  It is disabled by default on all three.
-          - { el: 8, crb_repo: powertools }
-          - { el: 9, crb_repo: crb }
-          - { el: 10, crb_repo: crb }
+          - { el: 8 }
+          - { el: 9 }
+          - { el: 10 }
     steps:
       # Must precede the checkout: the Rocky images ship no git, and without it
       # actions/checkout silently falls back to downloading a tarball.
@@ -93,10 +91,36 @@ jobs:
         run: |
           set -eu
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          # jq-devel is in neither BaseOS/AppStream nor EPEL, so the spec's
-          # BuildRequires cannot be satisfied without enabling the repo above.
-          dnf -y --enablerepo='${{ matrix.crb_repo }}' \
-              builddep rpm/perl-JQ-XS.spec
+          # Every BuildRequires resolves in BaseOS/AppStream.  This used to need
+          # --enablerepo for the CodeReady Builder repo (powertools on EL8),
+          # which was there solely for jq-devel; the vendored jq replaced it.
+          dnf -y builddep rpm/perl-JQ-XS.spec
+
+      # The point of vendoring jq is that the module stops depending on whatever
+      # libjq the distribution ships, so check exactly that, before the package
+      # build: the embedded version is the one in vendor/, the bundled oniguruma
+      # really made it in, and nothing links libjq.  Builds its own blib because
+      # "make deb" begins with a realclean and "make rpm" builds in its own tree.
+      - name: Smoke-test the embedded jq
+        run: |
+          set -eu
+          perl Makefile.PL
+          make
+          make test
+          expected=$(ls vendor/jq-*.tar.gz | sed 's|.*/jq-\(.*\)\.tar\.gz|\1|')
+          got=$(perl -Mblib -MJQ::XS -e 'print JQ::XS::jq_version()')
+          echo "embedded jq: $got (vendored: $expected)"
+          [ "$got" = "$expected" ]
+          perl -Mblib -MJQ::XS -e '
+              my ($r) = JQ::XS->new(q{[.[] | select(test("^a"))]})->process([qw(ant bee ape)]);
+              die "regex builtins are missing\n" unless "@$r" eq "ant ape";
+              print "regex builtins ok\n";
+          '
+          if ldd blib/arch/auto/JQ/XS/XS.so | grep libjq; then
+              echo "::error::XS.so still links libjq"
+              exit 1
+          fi
+          echo "XS.so does not link libjq"
 
       # "make rpm" builds the dist tarball first and points _sourcedir at it.
       # That matters: the spec's %files lists %doc META.json, and META.json only
@@ -117,6 +141,12 @@ jobs:
               ! -name '*-debuginfo-*' ! -name '*-debugsource-*' \
               -exec cp -v {} dist/ \;
           ls -l dist
+          # The dependency on libjq.so.1 was generated automatically from the
+          # linked .so, so its absence is the packaged proof of the above.
+          if rpm -qp --requires dist/*.rpm | grep libjq; then
+              echo "::error::the RPM still requires libjq"
+              exit 1
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
@@ -160,6 +190,32 @@ jobs:
           # package provided by libperl-dev.
           apt-get build-dep -y ./
 
+      # The point of vendoring jq is that the module stops depending on whatever
+      # libjq the distribution ships, so check exactly that, before the package
+      # build: the embedded version is the one in vendor/, the bundled oniguruma
+      # really made it in, and nothing links libjq.  Builds its own blib because
+      # "make deb" begins with a realclean and "make rpm" builds in its own tree.
+      - name: Smoke-test the embedded jq
+        run: |
+          set -eu
+          perl Makefile.PL
+          make
+          make test
+          expected=$(ls vendor/jq-*.tar.gz | sed 's|.*/jq-\(.*\)\.tar\.gz|\1|')
+          got=$(perl -Mblib -MJQ::XS -e 'print JQ::XS::jq_version()')
+          echo "embedded jq: $got (vendored: $expected)"
+          [ "$got" = "$expected" ]
+          perl -Mblib -MJQ::XS -e '
+              my ($r) = JQ::XS->new(q{[.[] | select(test("^a"))]})->process([qw(ant bee ape)]);
+              die "regex builtins are missing\n" unless "@$r" eq "ant ape";
+              print "regex builtins ok\n";
+          '
+          if ldd blib/arch/auto/JQ/XS/XS.so | grep libjq; then
+              echo "::error::XS.so still links libjq"
+              exit 1
+          fi
+          echo "XS.so does not link libjq"
+
       - name: Build .deb
         run: |
           set -eu
@@ -186,6 +242,12 @@ jobs:
           find .. -maxdepth 1 -type f -name '*.deb' ! -name '*-dbgsym_*' \
               -exec cp -v {} dist/ \;
           ls -l dist
+          # ${shlibs:Depends} was resolved from the linked .so, so libjq1 no
+          # longer appearing there is the packaged proof of the above.
+          if dpkg-deb -f dist/*.deb Depends | grep libjq; then
+              echo "::error::the .deb still depends on libjq"
+              exit 1
+          fi
 
       - uses: actions/upload-artifact@v4
         with:

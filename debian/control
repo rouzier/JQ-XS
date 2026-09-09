@@ -2,8 +2,11 @@ Source: libjq-xs-perl
 Section: perl
 Priority: optional
 Maintainer: James Rouzier <rouzier@gmail.com>
+# No libjq-dev: the jq vendored in the upstream tarball is compiled in and
+# linked statically, so the build needs only the C toolchain that
+# debhelper-compat and perl-xs-dev already pull in.  Archive::Tar and
+# Digest::SHA, used to unpack and verify that tarball, come with perl:native.
 Build-Depends: debhelper-compat (= 13),
-               libjq-dev,
                libjson-pp-perl,
                perl-xs-dev,
                perl:native
