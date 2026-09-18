@@ -1,5 +1,5 @@
 Name:           perl-JQ-XS
-Version:        2.01
+Version:        2.02
 Release:        1%{?dist}
 Summary:        Perl wrapper for libjq
 # JQ::XS is MIT.  The vendored jq is compiled in and statically linked, which
@@ -70,6 +70,12 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Fri Sep 18 2026 James Rouzier <rouzier@gmail.com> 2.02-1
+- Do not warn when another JSON module is loaded alongside JQ::XS:
+  JSON::PP is now loaded only when nothing else has already overloaded
+  JSON::PP::Boolean, so Cpanel::JSON::XS and JSON::XS keep their own
+  operators and JQ::XS no longer redefines them
+
 * Fri Sep 18 2026 James Rouzier <rouzier@gmail.com> 2.01-1
 - No change to the module itself; fixes the release workflow's smoke test
   on RHEL 9 and 10, where blib.pm is packaged apart from perl itself

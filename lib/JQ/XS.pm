@@ -9,11 +9,23 @@ use Carp qw(croak);
 require XSLoader;
 use Exporter 'import';
 
-# Loads the overloads (boolification, stringification, ...) for the
-# JSON::PP::Boolean objects returned by process().
-use JSON::PP::Boolean ();
+# process() blesses JSON booleans into JSON::PP::Boolean, so that class needs
+# its overloads (numification, increment, fallback, ...) loaded.  Other JSON
+# modules install those operators into JSON::PP::Boolean themselves --
+# Cpanel::JSON::XS does, and JSON::XS does it through Types::Serialiser -- and
+# loading JSON::PP::Boolean on top of them redefines the operators, which warns
+# under -w.  So only load it when nobody has set the class up yet; "((" is the
+# marker overload.pm installs in every overloaded class.
+#
+# Load it as JSON::PP rather than JSON::PP::Boolean on its own: a later
+# Cpanel::JSON::XS reads $JSON::PP::VERSION to decide whether the operators
+# need installing, and warns about it being undefined if it finds the boolean
+# class loaded without its parent.
+BEGIN {
+  require JSON::PP unless JSON::PP::Boolean->can('((');
+}
 
-our $VERSION = '2.01';
+our $VERSION = '2.02';
 
 XSLoader::load('JQ::XS', $VERSION);
 

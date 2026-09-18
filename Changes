@@ -1,5 +1,18 @@
 Revision history for Perl extension JQ::XS.
 
+2.02
+	- Stop warning when another JSON module is loaded alongside JQ::XS.
+	  Cpanel::JSON::XS installs the JSON::PP::Boolean operators itself,
+	  and JSON::XS does the same through Types::Serialiser, so the
+	  unconditional "use JSON::PP::Boolean" redefined their operators
+	  ("Subroutine JSON::PP::Boolean::(0+ redefined", three times) when
+	  JQ::XS was loaded second, and left the boolean class loaded
+	  without its parent when it was loaded first, which made
+	  Cpanel::JSON::XS read an undefined $JSON::PP::VERSION.  JQ::XS now
+	  loads JSON::PP, and only when nothing else has already overloaded
+	  JSON::PP::Boolean.  Both warnings are gated on $^W, so they only
+	  showed under -w.  JSON::PP was already a prerequisite.
+
 2.01
 	- No change to the module itself.  Fixes the release workflow's
 	  smoke test on RHEL 9 and 10, where blib.pm ships in a separate

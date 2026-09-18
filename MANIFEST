@@ -9,6 +9,7 @@ THIRD-PARTY-LICENSES
 typemap
 XS.xs
 lib/JQ/XS.pm
+t/boolean-overload.t
 t/embedded-jq.t
 t/features.t
 t/JQ-XS.t
