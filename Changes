@@ -1,5 +1,12 @@
 Revision history for Perl extension JQ::XS.
 
+2.01
+	- No change to the module itself.  Fixes the release workflow's
+	  smoke test on RHEL 9 and 10, where blib.pm ships in a separate
+	  perl-blib package that the build dependencies do not install:
+	  the test now puts blib/lib and blib/arch on @INC itself rather
+	  than loading blib.
+
 2.00
 	- Embed jq: the distribution now ships an upstream jq release tarball
 	  under vendor/, compiles it during "make" and links it statically.
