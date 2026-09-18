@@ -13,7 +13,7 @@ use Exporter 'import';
 # JSON::PP::Boolean objects returned by process().
 use JSON::PP::Boolean ();
 
-our $VERSION = '2.00';
+our $VERSION = '2.01';
 
 XSLoader::load('JQ::XS', $VERSION);
 

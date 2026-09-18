@@ -101,6 +101,9 @@ jobs:
       # build: the embedded version is the one in vendor/, the bundled oniguruma
       # really made it in, and nothing links libjq.  Builds its own blib because
       # "make deb" begins with a realclean and "make rpm" builds in its own tree.
+      # Loads it with -I rather than -Mblib, which is not universally present:
+      # EL9 and EL10 split blib.pm into a perl-blib package that nothing here
+      # installs (EL8 ships it inside perl-interpreter).
       - name: Smoke-test the embedded jq
         run: |
           set -eu
@@ -108,10 +111,10 @@ jobs:
           make
           make test
           expected=$(ls vendor/jq-*.tar.gz | sed 's|.*/jq-\(.*\)\.tar\.gz|\1|')
-          got=$(perl -Mblib -MJQ::XS -e 'print JQ::XS::jq_version()')
+          got=$(perl -Iblib/lib -Iblib/arch -MJQ::XS -e 'print JQ::XS::jq_version()')
           echo "embedded jq: $got (vendored: $expected)"
           [ "$got" = "$expected" ]
-          perl -Mblib -MJQ::XS -e '
+          perl -Iblib/lib -Iblib/arch -MJQ::XS -e '
               my ($r) = JQ::XS->new(q{[.[] | select(test("^a"))]})->process([qw(ant bee ape)]);
               die "regex builtins are missing\n" unless "@$r" eq "ant ape";
               print "regex builtins ok\n";
@@ -195,6 +198,9 @@ jobs:
       # build: the embedded version is the one in vendor/, the bundled oniguruma
       # really made it in, and nothing links libjq.  Builds its own blib because
       # "make deb" begins with a realclean and "make rpm" builds in its own tree.
+      # Loads it with -I rather than -Mblib, which is not universally present:
+      # EL9 and EL10 split blib.pm into a perl-blib package that nothing here
+      # installs (EL8 ships it inside perl-interpreter).
       - name: Smoke-test the embedded jq
         run: |
           set -eu
@@ -202,10 +208,10 @@ jobs:
           make
           make test
           expected=$(ls vendor/jq-*.tar.gz | sed 's|.*/jq-\(.*\)\.tar\.gz|\1|')
-          got=$(perl -Mblib -MJQ::XS -e 'print JQ::XS::jq_version()')
+          got=$(perl -Iblib/lib -Iblib/arch -MJQ::XS -e 'print JQ::XS::jq_version()')
           echo "embedded jq: $got (vendored: $expected)"
           [ "$got" = "$expected" ]
-          perl -Mblib -MJQ::XS -e '
+          perl -Iblib/lib -Iblib/arch -MJQ::XS -e '
               my ($r) = JQ::XS->new(q{[.[] | select(test("^a"))]})->process([qw(ant bee ape)]);
               die "regex builtins are missing\n" unless "@$r" eq "ant ape";
               print "regex builtins ok\n";
