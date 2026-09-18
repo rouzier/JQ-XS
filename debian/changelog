@@ -1,3 +1,21 @@
+libjq-xs-perl (2.00-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Embed jq 1.8.2 instead of linking the libjq the distribution packages;
+    drop the libjq-dev build dependency.  The package no longer depends on
+    libjq1 at runtime, and the jq filter semantics no longer vary with the
+    suite's jq version.
+  * Record the licenses of the vendored jq, decNumber and oniguruma, and
+    install THIRD-PARTY-LICENSES.
+  * Expose more of the libjq API: named and positional arguments, jq's
+    output formatting options, halt/halt_error, the debug, stderr and
+    input/inputs builtins, jq attributes, and JSON parsing and printing
+    helpers.
+  * New allow_includes option refuses filters containing include or import,
+    for callers compiling programs they did not write.
+
+ -- James Rouzier <rouzier@gmail.com>  Tue, 15 Sep 2026 00:00:00 +0000
+
 libjq-xs-perl (1.01-1) unstable; urgency=medium
 
   * New upstream release.

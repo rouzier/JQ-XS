@@ -1,8 +1,12 @@
 Name:           perl-JQ-XS
-Version:        1.01
+Version:        2.00
 Release:        1%{?dist}
 Summary:        Perl wrapper for libjq
-License:        MIT
+# JQ::XS is MIT.  The vendored jq is compiled in and statically linked, which
+# brings its own terms along: jq itself is MIT, decNumber is under the ICU
+# license, and oniguruma, NetBSD's strptime and the Heimdal bits are all
+# BSD-2-Clause.  See THIRD-PARTY-LICENSES.
+License:        MIT AND ICU AND BSD-2-Clause
 Group:          Development/Libraries
 URL:            http://search.cpan.org/dist/JQ-XS/
 Source0:        http://www.cpan.org/modules/by-module/JQ/JQ-XS-%{version}.tar.gz
@@ -17,8 +21,12 @@ BuildRequires:  perl-devel
 BuildRequires:  perl-generators
 BuildRequires:  perl-podlators
 BuildRequires:  perl(ExtUtils::MakeMaker)
-# libjq itself.
-BuildRequires:  jq-devel
+# JQ::XS compiles the jq vendored in its own tarball rather than linking the
+# one the distribution packages, so there is no jq-devel here -- gcc, make and
+# a shell are the whole toolchain it needs.  Unpacking and verifying that
+# tarball needs two modules that RHEL ships apart from perl itself.
+BuildRequires:  perl(Archive::Tar)
+BuildRequires:  perl(Digest::SHA)
 # Used by t/JQ-XS.t, which %check runs.
 BuildRequires:  perl(Data::Dumper)
 BuildRequires:  perl(JSON::PP)
@@ -56,12 +64,20 @@ rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(-,root,root,-)
-%doc Changes LICENSE META.json README
+%doc Changes LICENSE META.json README THIRD-PARTY-LICENSES
 %{perl_vendorarch}/auto/*
 %{perl_vendorarch}/JQ*
 %{_mandir}/man3/*
 
 %changelog
+* Tue Sep 15 2026 James Rouzier <rouzier@gmail.com> 2.00-1
+- Embed jq 1.8.2 rather than linking the libjq the distribution packages
+- No longer requires libjq at build or run time
+- Expose more of the libjq API: named/positional arguments, output
+  formatting, halt/halt_error, the debug, stderr and input/inputs
+  callbacks, jq attributes and JSON parse/print helpers
+- New allow_includes option refuses filters that load modules from disk
+
 * Tue Sep 01 2026 James Rouzier <rouzier@gmail.com> 1.01-1
 - Version the Debian packages +debNuM rather than ~debNuM
 
