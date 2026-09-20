@@ -1,3 +1,13 @@
+libjq-xs-perl (2.03-1) unstable; urgency=medium
+
+  * New upstream release.
+  * No change to the module itself; fixes building against Archive::Tar 3.x,
+    which refuses to unpack the vendored jq tarball because jq ships
+    docs/content/manual/v1.8/manual.yml as a hard link.  vendor/build-jq.pl
+    now dereferences hard links itself and falls back to tar(1).
+
+ -- James Rouzier <rouzier@gmail.com>  Sun, 20 Sep 2026 00:00:00 +0000
+
 libjq-xs-perl (2.02-1) unstable; urgency=medium
 
   * New upstream release.

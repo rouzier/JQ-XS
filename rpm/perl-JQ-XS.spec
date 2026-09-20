@@ -1,5 +1,5 @@
 Name:           perl-JQ-XS
-Version:        2.02
+Version:        2.03
 Release:        1%{?dist}
 Summary:        Perl wrapper for libjq
 # JQ::XS is MIT.  The vendored jq is compiled in and statically linked, which
@@ -70,6 +70,12 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Sun Sep 20 2026 James Rouzier <rouzier@gmail.com> 2.03-1
+- No change to the module itself; fixes building against Archive::Tar 3.x,
+  which refuses to unpack the vendored jq tarball because jq ships
+  docs/content/manual/v1.8/manual.yml as a hard link: vendor/build-jq.pl
+  now dereferences hard links itself and falls back to tar(1)
+
 * Fri Sep 18 2026 James Rouzier <rouzier@gmail.com> 2.02-1
 - Do not warn when another JSON module is loaded alongside JQ::XS:
   JSON::PP is now loaded only when nothing else has already overloaded
