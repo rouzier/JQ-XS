@@ -1,5 +1,5 @@
 Name:           perl-JQ-XS
-Version:        2.03
+Version:        2.04
 Release:        1%{?dist}
 Summary:        Perl wrapper for libjq
 # JQ::XS is MIT.  The vendored jq is compiled in and statically linked, which
@@ -70,6 +70,12 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Fri Sep 25 2026 James Rouzier <rouzier@gmail.com> 2.04-1
+- No change to what the module computes; fixes t/JQ-XS.t on a perl built
+  with -Duselongdouble or -Dusequadmath, where an NV is wider than the IEEE
+  double jq holds numbers in and the float round-trip test compared unequal:
+  the test now narrows the literal to a double first
+
 * Sun Sep 20 2026 James Rouzier <rouzier@gmail.com> 2.03-1
 - No change to the module itself; fixes building against Archive::Tar 3.x,
   which refuses to unpack the vendored jq tarball because jq ships

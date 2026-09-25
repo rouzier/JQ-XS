@@ -1,3 +1,13 @@
+libjq-xs-perl (2.04-1) unstable; urgency=medium
+
+  * New upstream release.
+  * No change to what the module computes; fixes t/JQ-XS.t on a perl built
+    with -Duselongdouble or -Dusequadmath, where an NV is wider than the
+    IEEE double jq holds numbers in and the float round-trip test compared
+    unequal.  Documents the precision under "Number handling".
+
+ -- James Rouzier <rouzier@gmail.com>  Fri, 25 Sep 2026 00:00:00 +0000
+
 libjq-xs-perl (2.03-1) unstable; urgency=medium
 
   * New upstream release.
